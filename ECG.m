@@ -17,13 +17,50 @@ ecg_noisy = add_noise(ecg, t);
 ecg_filtered = filter_ecg(ecg_noisy, fs);
 
 % Detect R-peaks and calculate heart rate
-[hr_bpm, r_peaks] = calculate_heart_rate(ecg_filtered, fs);
+[hr_bpm, r_peaks, rr_intervals] = calculate_heart_rate(ecg_filtered, fs);
+
+% AFib Detection based on RR interval irregularity
+if isempty(rr_intervals) || any(isnan(rr_intervals))
+    disp('Error: Invalid RR intervals.');
+else
+    rr_diff = abs(diff(rr_intervals)); % Difference between successive RR intervals
+    rr_std = std(rr_diff); % Standard deviation of RR interval differences
+    fprintf('Standard deviation of RR intervals: %.4f seconds\n', rr_std);
+
+    % Define AFib threshold
+    afib_threshold = 0.12; % 120 ms
+
+    % Check for AFib
+    if rr_std > afib_threshold
+        disp('Warning: Possible AFib detected!');
+    else
+        disp('Normal rhythm detected.');
+    end
+
+    % Display average heart rate
+    fprintf('Average heart rate: %.2f bpm\n', mean(hr_bpm));
+end
+
+% Detect R-peaks and calculate heart rate
+function [hr_bpm, r_peaks, rr_intervals] = calculate_heart_rate(ecg_filtered, fs)
+    threshold = 0.7; % R-peak detection threshold
+    [~, r_peaks] = findpeaks(ecg_filtered, 'MinPeakHeight', threshold);
+    
+    if isempty(r_peaks)
+        % Handle case when no R-peaks are detected
+        warning('No R-peaks detected. Heart rate cannot be calculated.');
+        hr_bpm = NaN; % Return NaN if no R-peaks detected
+        rr_intervals = NaN;
+        return;
+    end
+    
+    hr_samples = diff(r_peaks); % Difference between R-peak locations in samples
+    rr_intervals = hr_samples / fs; % R-R intervals (seconds)
+    hr_bpm = 60 ./ rr_intervals; % Heart rate (bpm)
+end
 
 % Plot the ECG signals
 plot_ecg_signals(t, ecg_noisy, ecg_filtered, hr_bpm, r_peaks, fs);
-
-% Display average heart rate
-fprintf('Average heart rate: %.2f bpm\n', mean(hr_bpm));
 
 % Generate dynamic ECG signal
 function [ecg, t] = generate_dynamic_ecg(fs, T)
@@ -69,15 +106,6 @@ function ecg_filtered = filter_ecg(ecg_noisy, fs)
     Wn = [low_cutoff, high_cutoff] / (fs/2); % Normalized cutoff frequencies
     [b, a] = butter(order, Wn, 'bandpass'); % Design Butterworth filter
     ecg_filtered = filter(b, a, ecg_noisy);
-end
-
-% Detect R-peaks and calculate heart rate
-function [hr_bpm, r_peaks] = calculate_heart_rate(ecg_filtered, fs)
-    threshold = 0.7; % R-peak detection threshold
-    [~, r_peaks] = findpeaks(ecg_filtered, 'MinPeakHeight', threshold);
-    hr_samples = diff(r_peaks); % Difference between R-peak locations in samples
-    hr_time = hr_samples / fs; % Convert to time (s)
-    hr_bpm = 60 ./ hr_time; % Convert to beats per minute (bpm)
 end
 
 % Plot the ECG signals
