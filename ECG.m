@@ -65,7 +65,7 @@ plot_ecg_signals(t, ecg_noisy, ecg_filtered, hr_bpm, r_peaks, fs);
 % Generate dynamic ECG signal
 function [ecg, t] = generate_dynamic_ecg(fs, T)
     hr_min = 60; % Minimum heart rate (bpm)
-    hr_max = 100; % Maximum heart rate (bpm)
+    hr_max = 135; % Maximum heart rate (bpm)
     num_cycles = T*hr_min/60; % Calculate the approximate number of cycles
     t_hr = linspace(0, T, num_cycles); % Time vector for heart rate changes
     hr = interp1([0, T], [hr_min, hr_max], t_hr, 'pchip'); % Interpolate between min and max heart rate
